@@ -44,29 +44,25 @@ class Terminal(App):
         self.set_interval(1.0, self.watch_md_file)
 
     async def watch_md_file(self) -> None:
-        """Read the last line from the .md file and print it to the TUI if changed."""
+        """Read the last 8 lines from the .md file and print to the TUI if changed."""
         try:
             if self.md_file_path.exists():
                 with open(self.md_file_path, "r", encoding="utf-8") as f:
                     lines = f.read().splitlines()
-                if lines:
-                    latest_line = lines[-1].strip()
-                    if latest_line and latest_line != self.last_line:
-                        self.last_line = latest_line
-                        self.print_md_output(latest_line)
+                last_lines = '\n'.join(lines[-8:]) if lines else ''
+                if last_lines and last_lines != getattr(self, 'last_content', None):
+                    self.last_content = last_lines
+                    self.print_md_output(last_lines)
         except Exception as e:
             self.print_md_output(f"Error reading {self.md_file_path.name}: {e}")
 
-    def print_md_output(self, line: str) -> None:
-        """Print the latest line from the .md file to the TUI, styled nicely."""
+    def print_md_output(self, content: str) -> None:
+        """Overwrite the chat area with the latest .md file contents, styled nicely."""
         chat = self.query_one("#chat", Static)
-        current = chat.renderable if hasattr(chat, 'renderable') and chat.renderable else Text()
-        if not isinstance(current, Text):
-            current = Text()
-        current.append("\n")
-        current.append(f"📄 Object Tracing: ", style="bold magenta")
-        current.append(line, style="bold white on black")
-        chat.update(current)
+        text = Text()
+        text.append(f"📄 Object Tracing: \n", style="bold magenta")
+        text.append(content, style="bold white on black")
+        chat.update(text)
         chat.scroll_end()
         
     CSS_PATH = "editor_template.tcss"
