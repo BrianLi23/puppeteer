@@ -27,6 +27,9 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/BrianLi23/hackyattacky2025"
 
+[project.scripts]
+mcp-terminal = "terminal-input.app:main"
+
 [project.optional-dependencies]
 dev = [
     "ruff>=0.13.0",
