@@ -15,7 +15,7 @@ from services.ai_client import AgentClient
 from services.apply_change import ApplyChange
 from services.context import ContextBuilder
 from services.indexer import Indexer
-from hackyattacky2025.terminal.services.parser import Parser
+from services.parser import Parser
 
 class Terminal(App):
     CSS_PATH = "editor_template.tcss"
@@ -139,11 +139,13 @@ class Terminal(App):
 
         webbrowser.open(url)
     
-    def apply_code_changes(self):
+    async def apply_code_changes(self):
         self.show_loading()
         
-        # Run in background thread
-        self.run_worker(self._apply_changes.apply_pending_changes(), exclusive=True)
+        # Run async function
+        await self.apply_changes.apply_pending_changes()
+        
+        self.hide_loading()
     
     @on(Input.Submitted, "#input")
     def handle_input(self, event):
@@ -158,7 +160,7 @@ class Terminal(App):
         self.run_worker(self.process_user_request(user_request), exclusive=True)
          
         if user_request.lower() == 'apply':
-            self.apply_code_changes()
+            self.run_worker(self.apply_code_changes(), exclusive=True)
             return
         
         elif user_request.lower() == 'cancel':
@@ -166,7 +168,7 @@ class Terminal(App):
             self.update_chat("Changes cancelled", "ai")
             return
         
-        if not self.current_file:
+        if not self.context_file:
             self.update_chat("Please select a project description file first", "error")
             return
     

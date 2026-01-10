@@ -190,3 +190,9 @@ class Parser:
         
         LOGGER.debug(f"DEBUG: Returning {len(sections)} sections")
         return sections
+    
+    def generate_line_edits(self, original_content: str, modified_content: str) -> list:
+        return [{
+            'action': 'replace_all',
+            'content': modified_content
+        }]

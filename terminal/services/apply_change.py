@@ -7,7 +7,7 @@ class ApplyChange:
     def __init__(self, app):
         self.app = app
 
-    def apply_pending_changes(self):
+    async def apply_pending_changes(self):
         if not self.app.pending_changes:
             self.app.update_chat("No changes to apply", "error")
             return
