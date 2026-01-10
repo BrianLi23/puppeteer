@@ -1,7 +1,5 @@
-/* Minimal Editor CSS */
-
 Screen {
-    background: #1a1a1a;
+    background: #2B2F3F;
 }
 
 .main {
@@ -12,48 +10,78 @@ Screen {
 Input {
     dock: bottom;
     height: 3;
-    background: #333;
+    padding: 0 1;
+    background: #2B2F3F;
     color: white;
+    border: round #6c7086;
+    text-align: center;
 }
 
 Select {
-    height: 3;
-    background: #333;
+    height: 5;
+    background: #2B2F3F;
     color: white;
-    margin: 0 0 1 0;
+    margin: 0;
+    border: #6c7086;
 }
 
-/* Chat bubbles */
-.user-bubble {
-    background: #2d4a87;
-    color: white;
-    margin: 1 0;
-    padding: 1;
-}
-
-.ai-bubble {
-    background: #2d5a27;
-    color: white;
-    margin: 1 0;
-    padding: 1;
-}
-
-.thinking-bubble {
-    background: #8b7355;
-    color: white;
-    margin: 1 0;
-    padding: 1;
-}
-
-.error-bubble {
-    background: #8b2635;
-    color: white;
-    margin: 1 0;
-    padding: 1;
+SelectCurrent {
+    border: blank;
+    background: #2B2F3F;
+    text-align: center;
+    content-align: center middle;
 }
 
 Footer {
     dock: bottom;
     height: 1;
     background: #333;
+}
+
+#header {
+    width: 100%;
+    height: 16;
+    background: #22232F;
+    padding: 2;
+}
+
+#title {
+    width: 100%;
+    height: auto;
+    text-style: bold;
+    color: #645384;
+    content-align: left top;
+}
+
+#subtitle {
+    width: 100%;
+    height: auto;
+    color: #6c7086;
+    content-align: left top;
+    margin: 1 0 0 0;
+}
+
+#description {
+    width: 60%;
+    height: auto;
+    color: #ffffffff;
+    content-align: left top;
+    margin: 2 0 0 0;
+}
+
+#links {
+    width: 60%;
+    height: auto;
+    color: #6c7086;
+    content-align: left top;
+    margin: 3 0 0 0;
+    link-style: underline;
+}
+
+#loading {
+    display: none;
+    content-align: center middle;
+    width: 100%;
+    height: 100%;
+    background: #2B2F3F;
 }

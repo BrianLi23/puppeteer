@@ -1,79 +1,167 @@
+import asyncio
 from pathlib import Path
 
-import google.genai as genai
-from google.genai import types
-import difflib
-from dotenv import load_dotenv
-from rich.syntax import Syntax
-from rich.text import Text
+from rich.text import Text 
 
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
-from textual.widgets import Footer, Header, Input, Log, Select, Static
+from textual.widgets import Footer, Input, LoadingIndicator, Select, Static
+from textual.content import Content
+from textual.worker import Worker, WorkerState
 
-from services.indexer import get_all_project_files
-from services.fs import load_file
-from services.ai_client import process_request
-from services.applier import apply_changes
-
-from terminal_prompt import terminal_prompt
 from config.logger import LOGGER
+from services.ai_client import AgentClient
+from services.apply_change import ApplyChange
+from services.context import ContextBuilder
+from services.indexer import Indexer
+from hackyattacky2025.terminal.services.parser import Parser
 
 class Terminal(App):
+    CSS_PATH = "editor_template.tcss"
+    
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("ctrl+c", "quit", "Quit"),
+        ("escape", "cancel_changes", "Cancel"),
+    ]
+
     def __init__(self, working_dir: str = "."):
         super().__init__()
         self.working_dir = Path(working_dir).resolve()
-        self.current_file = ""
+        self.context_file = ""
         self.pending_changes = None
         
-        # Add key bindings
-        self.title = f"MCP Minimal Editor - {self.working_dir} (Press Ctrl+C or q to quit)"
+        # Services
+        self._agent_client = None
+        self._apply_changes = None
+        self._contextbuilder = None
+        self._indexer = None
+        self._parser = None
+        
+        self.files = self._discover_description_files()
+    
+    @property
+    def agent_client(self):
+        if self._agent_client is None:
+            self._agent_client = AgentClient(self)
+        return self._agent_client
+    
+    @property
+    def apply_changes(self):
+        if self._apply_changes is None:
+            self._apply_changes = ApplyChange(self)
+        return self._apply_changes
+    
+    @property
+    def contextbuilder(self):
+        if self._contextbuilder is None:
+            self._contextbuilder = ContextBuilder(self)
+        return self._contextbuilder
+    
+    @property
+    def indexer(self):
+        if self._indexer is None:
+            self._indexer = Indexer(self)
+        return self._indexer
+    
+    @property
+    def parser(self):
+        if self._parser is None:
+            self._parser = Parser(self)
+        return self._parser
+
+    def _discover_description_files(self):
+
+        files = []
+        for path in self.working_dir.rglob("*"):
+            parts = path.relative_to(self.working_dir).parts
+            # Skip hidden directories
+            if any(part.startswith('.') for part in parts[:-1]):
+                continue
+            if path.name.startswith('.'):  # Skip hidden files
+                continue
+            rel_path = path.relative_to(self.working_dir)
+            # Select widget expects (display_text, value) tuples
+            # We want to show relative path but use absolute path as value
+            files.append((str(rel_path), str(path)))
+
+        # Prioritize README-like files first, then alphabetical
+        files.sort(key=lambda item: (0 if "readme" in item[0].lower() else 1, item[0].lower()))
+        return files
     
     def compose(self) -> ComposeResult:
         with Vertical(classes="main"):
+            # Header section
+            with Vertical(id="header"):
+                yield Static("🎭 Puppeteer", id="title")
+                yield Static("The Application Runtime Assistant", id="subtitle")
+                yield Static(
+                    "Select the project description file to use as context for your requests, "
+                    "then write your instructions for what you would like to agent to do during runtime.",
+                    id="description",
+                )
+                yield Static(Content.from_markup("@Github: [@click=app.url('https://github.com/BrianLi23/puppeteer')]Repository[/] | @Devpost: [@click=app.url('https://devpost.com/software/puppeteer-7429qv')]Link[/]"), id="links")
+
             if self.files:
-                yield Select(self.files, id="file_select", prompt="Select project description file (README, etc.)...")
+                yield Select(self.files, id="file_select", prompt="Select project description file...")
             else:
                 yield Static("No files found")
+                
             yield Static(id="chat", classes="main")
+            yield LoadingIndicator(id="loading")
+            
             yield Input(placeholder="Describe what you want me to do with your project...", id="input")
         
         yield Footer()
         
     @on(Select.Changed, "#file_select")
     def file_selected(self, event):
-        """Project description file selected"""
         if event.value:
-            self.current_file = event.value
-            self.load_project_description()
+            self.context_file = event.value
+            try:
+                path = Path(self.context_file)
+                display_path = path.relative_to(self.working_dir) if path.is_absolute() else path
+                self.update_chat(f"Selected context file: {display_path}", "ai")
+            except Exception as exc:
+                self.update_chat(f"Error selecting file: {exc}", "error")
+    
+    def action_cancel_changes(self) -> None:
+        if self.pending_changes:
+            self.pending_changes = None
+            self.update_chat("Changes cancelled", "ai")
     
     def action_quit(self) -> None:
-        """Quit the application"""
         self.exit()
+
+    def action_url(self, url: str) -> None:
+        import webbrowser
+
+        webbrowser.open(url)
     
-    def on_key(self, event) -> None:
-        """Handle key presses"""
-        if event.key == 'q' and not hasattr(self.focused, 'value'):  # Only if not in input field
-            self.exit()
-        elif event.key == 'ctrl+c':
-            self.exit()
+    def apply_code_changes(self):
+        self.show_loading()
+        
+        # Run in background thread
+        self.run_worker(self._apply_changes.apply_pending_changes(), exclusive=True)
     
     @on(Input.Submitted, "#input")
-    async def handle_input(self, event):
-        """Process user input"""
-        request = event.value.strip()
-        if not request:
-            return
-            
-        # Clear input
-        event.input.value = ""
+    def handle_input(self, event):
+        user_request = event.value.strip()
         
-        # Handle commands
-        if request.lower() == 'apply':
-            await self.apply_pending_changes()
+        if not user_request:
             return
-        elif request.lower() == 'cancel':
+   
+        event.input.value = ""
+        self.show_loading()
+        self.update_chat(f"You: {user_request}", "user") # Shows user message
+        self.run_worker(self.process_user_request(user_request), exclusive=True)
+         
+        if user_request.lower() == 'apply':
+            self.apply_code_changes()
+            return
+        
+        elif user_request.lower() == 'cancel':
             self.pending_changes = None
             self.update_chat("Changes cancelled", "ai")
             return
@@ -81,62 +169,20 @@ class Terminal(App):
         if not self.current_file:
             self.update_chat("Please select a project description file first", "error")
             return
-        
-        # Show user request
-        self.update_chat(f"You: {request}", "user")
-        
-        # Show loading message
-        self.update_chat("Re-indexing project files and analyzing...", "loading")
-        
+    
+    async def process_user_request(self, user_request: str):
         try:
-            # Call MCP server
-            result = await self.call_mcp_edit_project(request)
+            result = await asyncio.to_thread(self.agent_client.edit_project, user_request)
+            self.hide_loading()
             
-            # Handle special "No changes needed" case silently
             if result == "NO_CHANGES_NEEDED":
-                # Just continue silently - user query already saved to user_query.md
-                LOGGER.debug("DEBUG: No changes needed, continuing silently")
                 return
             
-            # Show result for all other cases
             self.update_chat(result, "ai")
             
         except Exception as e:
-            # Show error
+            self.hide_loading()
             self.update_chat(f"Error: {e}", "error")
-    
-    def get_all_project_files(self) -> list:
-        """Get list of all project files"""
-        all_files = []
-        LOGGER.debug(f"DEBUG: Scanning project files in {self.working_dir}...")
-        
-        try:
-
-            for file_path in self.working_dir.rglob("*"):
-                if file_path.is_file():
-                    # Skip hidden files, binary files, and common ignore patterns
-                    # Ignore any file in a folder starting with a dot
-                    parts = file_path.relative_to(self.working_dir).parts
-                    if any(part.startswith('.') for part in parts[:-1]):
-                        continue
-                    if (not file_path.name.startswith('.') and 
-                        file_path.suffix not in ['.pyc', '.exe', '.bin', '.so', '.dll', '.backup'] and
-                        '__pycache__' not in str(file_path) and
-                        'terminal_debug.log' not in str(file_path)):
-                        # Make path relative to working directory
-                        rel_path = file_path.relative_to(self.working_dir)
-                        all_files.append(str(rel_path))
-                        
-            LOGGER.debug(f"DEBUG: Found {len(all_files)} project files")
-            for i, f in enumerate(all_files[:10]):  # Log first 10 files
-                LOGGER.debug(f"  {i+1}. {f}")
-            if len(all_files) > 10:
-                LOGGER.debug(f"  ... and {len(all_files) - 10} more files")
-                
-        except Exception as e:
-            LOGGER.debug(f"DEBUG: Error scanning files: {e}")
-            
-        return all_files
     
     def update_chat(self, text: str, message_type: str = "info"):
         chat = self.query_one("#chat", Static)
@@ -163,6 +209,18 @@ class Terminal(App):
         
         chat.update(current)
         chat.scroll_end()
+    
+    def show_loading(self):
+        chat = self.query_one("#chat", Static)
+        loading = self.query_one("#loading", LoadingIndicator)
+        chat.styles.display = "none"
+        loading.styles.display = "block"
+    
+    def hide_loading(self):
+        chat = self.query_one("#chat", Static)
+        loading = self.query_one("#loading", LoadingIndicator)
+        loading.styles.display = "none"
+        chat.styles.display = "block"
         
         
         

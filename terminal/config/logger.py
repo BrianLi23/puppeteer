@@ -12,10 +12,10 @@ if not LOGGER.handlers:
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
-    # Stderr handler - less verbose
-    stderr_handler = logging.StreamHandler(sys.stderr)
-    stderr_handler.setLevel(logging.DEBUG)
-    stderr_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+    # # Stderr handler - less verbose
+    # stderr_handler = logging.StreamHandler(sys.stderr)
+    # stderr_handler.setLevel(logging.DEBUG)
+    # stderr_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
 
     LOGGER.addHandler(file_handler)
-    LOGGER.addHandler(stderr_handler)
+    # LOGGER.addHandler(stderr_handler)
