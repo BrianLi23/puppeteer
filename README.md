@@ -1,5 +1,5 @@
 # Puppeteer: an AI Runtime proof-of-Concept
-This is a project written in 30 hours for the **Hack the North Hackathon**.
+This is a project written in 30 hours for the **Hack the North Hackathon**. (And later refactored and revamped for better UI and logic)
 For more information and a demo video, check out our [Devpost submission](https://devpost.com/software/puppeteer-7429qv).
 
 ## Description
