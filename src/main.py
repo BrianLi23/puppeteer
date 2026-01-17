@@ -1,6 +1,6 @@
 from python_runtime.probe import probe
 from ai_runtime.runtime import AIRuntime
-
+import logging
 
 def main() -> None:
     my_list = probe(

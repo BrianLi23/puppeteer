@@ -3,6 +3,10 @@ import uuid
 from typing import TypeVar, Generic, Any, Optional
 import yaml
 import datetime
+import logging
+from .runtime import Runtime
+
+LOGGER = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -15,30 +19,6 @@ RESERVED_FIELDS = {
     "_getattr_impl",
     "RESERVED_FIELDS",
 }
-
-
-class Runtime:
-    def register_probing(self, probed: "Probed"):
-        pass
-
-    def listen_event(self, probed: "Probed", event_content: str, result: str) -> None:
-        pass
-
-    def ask_model_decisions(
-        self, probed: "Probed", event_content: str
-    ) -> tuple[bool, bool, bool]:
-        pass
-
-    def respond_event(
-        self,
-        probed: "Probed",
-        event_content: str,
-        result_schema: str,
-        result_example: str,
-    ) -> str:
-        pass
-
-
 class Probed(Generic[T]):
     def __init__(
         self,
@@ -69,13 +49,15 @@ class Probed(Generic[T]):
             },
             indent=2,
         )
-        print("asking model...")
+        LOGGER.debug(f"DEBUG: Probed call data: {data}")
         should_be_interrupted, should_be_reported, should_be_stopped = (
             self._runtime.ask_model_decisions(self._entry, data)
         )
-        print(f"should be interrupted? {should_be_interrupted}")
-        print(f"should be reported? {should_be_reported}")
-        print(f"should be stopped? {should_be_stopped}")
+        LOGGER.debug(
+            f"DEBUG: Model decisions - Interrupt: {should_be_interrupted}, Report: {should_be_reported}, Stop: {should_be_stopped}"
+        )
+        print(
+            f"Model Decisions - Interrupt: {should_be_interrupted}, Report: {should_be_reported}, Stop: {should_be_stopped}")
         if should_be_reported:
             report_data = {
                 "timestamp": datetime.datetime.now().isoformat(),
@@ -90,7 +72,7 @@ class Probed(Generic[T]):
         if should_be_interrupted:
             result_schema = self._obj.__doc__
             print("the schema is :", result_schema)
-            result_example = None
+            result_example = "No example provided"
             try:
                 result_example = self._obj(*args, **kwargs)
             except Exception as e:
