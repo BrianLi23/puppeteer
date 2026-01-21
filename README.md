@@ -36,7 +36,7 @@ Then, run the program normally. Using the CLI targeted to your program directory
 Debugging Demo:
 
 
-https://github.com/user-attachments/assets/6c1c0b08-2de3-499e-8803-40f692fd3691
+https://github.com/user-attachments/assets/3e02adde-3526-4f81-a47d-0b10c75348f3
 
 
 
