@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from typing import TypeVar, Generic, Any, Optional
 import yaml
@@ -16,6 +17,7 @@ RESERVED_FIELDS = {
     "_prefix",
     "_entry",
     "_runtime",
+    "_stop_after",
     "_getattr_impl",
     "RESERVED_FIELDS",
 }
@@ -25,12 +27,14 @@ class Probed(Generic[T]):
         obj: T,
         prompt: str = "",
         prefix: str = "",
+        stop_after: Optional[bool] = True,
         runtime: Optional[Runtime] = None,
         entry: Optional["Probed[Any]"] = None,
     ) -> None:
         self._obj = obj
         self._prompt = prompt
         self._prefix = prefix
+        self._stop_after = stop_after
         if entry is not None:
             self._entry = entry
             self._runtime = entry._runtime
@@ -65,7 +69,8 @@ class Probed(Generic[T]):
             }
             with open("report.md", "a") as f:
                 f.write(yaml.dump(report_data) + "\n---\n")
-        if should_be_stopped:
+        stop_after = self._resolve_stop_after()
+        if should_be_stopped and not stop_after:
             import ipdb
 
             ipdb.set_trace()
@@ -77,13 +82,27 @@ class Probed(Generic[T]):
                 result_example = self._obj(*args, **kwargs)
             except Exception as e:
                 pass
-            return self._runtime.respond_event(
+            result = self._runtime.respond_event(
                 self._entry, data, result_schema, result_example
             )
+            if should_be_stopped and stop_after:
+                import ipdb
+
+                ipdb.set_trace()
+            return result
         else:
             result = self._obj(*args, **kwargs)
             self._runtime.listen_event(self._entry, data, result)
+            if should_be_stopped and stop_after:
+                import ipdb
+
+                ipdb.set_trace()
             return result
+
+    def _resolve_stop_after(self) -> bool:
+        if self._entry._stop_after is not None:
+            return self._entry._stop_after
+        return os.getenv("PROBE_STOP_AFTER", "").lower() in {"1", "true", "yes"}
 
     def _getattr_impl(self, name: str) -> "Probed[Any]":
         print(f"__getattr__ called for {name}")
@@ -95,6 +114,7 @@ class Probed(Generic[T]):
             attr,
             prompt=self._prompt,
             prefix=f"{self._prefix}.{name}",
+            stop_after=self._stop_after,
             entry=self._entry,
         )
 

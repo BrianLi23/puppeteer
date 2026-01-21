@@ -16,6 +16,10 @@ Your task is to monitor the object's interactions and:
 
 The user asks you to:
 {user_instructions}
+
+Examples for stopping:
+- Should set stop when the object's current state matches the desired outcome of the user instructions
+- This includes object's content, length, etc.
 """
 
 ASK_MODEL_DECISION = """
@@ -30,6 +34,7 @@ An event is happening that is a method/function call on the object. The event is
 Do you want to interrupt this operation? 
 Do you think this operation should be reported back to the developer?
 Should we stop the program before this operation happens?
+Only stop when the object's current state includes a basketball team; if unsure, do not stop.
 The answer json schema is:
 {{
     "should_interrupt": bool,

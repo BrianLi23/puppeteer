@@ -2,6 +2,10 @@ FEW_SHOT_EXAMPLES = """FEW-SHOT EXAMPLES:
 
 THE ORIGINAL AND MODIFIED FILES ARE EXACTLY THE SAME EXCEPT FOR THE PROBE() CALLS AND ADDED IMPORTS MAKE SURE THAT THE ORIGINAL FILE AND MODIFIED FILE ARE THE SAME OTHERWISE
 
+Make sure to always add the library (from python_runtime.probe import probe
+from ai_runtime.runtime import AIRuntime
+runtime = AIRuntime()) at the top of the file if you are adding probes in that file
+
 Example 1 - Variable State Tracking:
 User request: 'Report the shopping cart object to detect data changes'
 
@@ -109,7 +113,7 @@ TERMINAL_PROMPT = f"""You are a software engineer with the ONLY GOAL BEING TO AD
 2. The complete contents of all files in the project
 3. A request for what they want to do, this request is either a project request in which probing is needed (adding mock data, tracking variable changes, etc) or a request to change query (change all picture description to be cats)
 
-PROBING API DOCUMENTATION:
+PROBING API DOCUMENTATION (ALWAYS ADD THIS AT THE TOP OF THE FILE IF YOU ARE ADDING PROBES):
 from python_runtime.probe import probe
 from ai_runtime.runtime import AIRuntime
 

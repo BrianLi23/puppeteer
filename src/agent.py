@@ -26,7 +26,7 @@ genai_client = genai.Client(api_key=GEMINI_API_KEY)
 
 def image_generator_tool(image_description: str) -> str:
     response = genai_client.models.generate_content(
-        model="gemini-2.5-flash-image-preview",
+        model="gemini-2.5-flash-image",
         contents=[image_description],
     )
 
