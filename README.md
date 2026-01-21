@@ -19,7 +19,7 @@ For using Puppeteer in your project, first you should clone this project and ins
 ## Using the CLI to Add Probes
 You can add the probes manually or by running the CLI targeted to your project and asking it to add probes. To run the CLI, use the following command:
 ```bash
-uv run terminal.py --path path/to/target/code
+uv run terminal/app.py --path path/to/target/code
 ```
 
 ## Running the AI Runtime in Your Code
