@@ -33,6 +33,14 @@ pip install -e path/to/puppeteer
   ```
 Then, run the program normally. Using the CLI targeted to your program directory, you can then prompt the AI runtime.
 
+Database Mock Demo
+
+
+
+https://github.com/user-attachments/assets/1c0eb13a-808f-44ab-afe9-01d0c7f167be
+
+
+
 Debugging Demo:
 
 
